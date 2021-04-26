@@ -1,10 +1,10 @@
 //= require solidus_paypal_braintree/frontend
 
-$(function() {
+$(function () {
   /* This provides a default error handler for Braintree. Since we prevent
    * submission if tokenization fails, we need to manually re-enable the
    * submit button. */
-  function braintreeError (err) {
+  function braintreeError(err) {
     SolidusPaypalBraintree.config.braintreeErrorHandle(err);
     enableSubmit();
   }
@@ -37,11 +37,15 @@ $(function() {
   }
 
   function addFormHook(braintreeForm, hostedField) {
-    $paymentForm.on("submit",function(event) {
+    $paymentForm.on("submit", function (event) {
       var $field = $(hostedField);
 
       if ($field.is(":visible") && !$field.data("submitting")) {
         var $nonce = $("#payment_method_nonce", $field);
+        var $ccType = $("#payment_source_cc_type", $field);
+        var $lastDigits = $("#payment_source_last_digits", $field);
+        var $deviceData = $('#payment_source_device_data', $field);
+        var $3dsAuthId = $('#payment_source_three_d_secure_authentication_id', $field);
 
         if ($nonce.length > 0 && $nonce.val() === "") {
           var client = braintreeForm._merchantConfigurationOptions._solidusClient;
@@ -49,37 +53,95 @@ $(function() {
           event.preventDefault();
           disableSubmit();
 
-          braintreeForm.tokenize(function(error, payload) {
+
+          var cardholderName = $paymentForm.find('#cardholderNameContainer');
+          var cardholderValue = cardholderName.find('input').val();
+
+          braintreeForm.tokenize(function (error, payload) {
             if (error) {
+              if (cardholderValue.length == 0 && typeof error.details !== 'undefined') {
+                error.details.invalidFieldKeys.push("cardholderName");
+                error.details.invalidFields["cardholderName"] = cardholderName[0];
+              }
               braintreeError(error);
               return;
             }
 
+            if (cardholderValue.length == 0) {
+              error = {
+                name: "BraintreeError",
+                code: "HOSTED_FIELDS_FIELDS_INVALID",
+                message: BraintreeError.HOSTED_FIELDS_FIELDS_INVALID,
+                type: "CUSTOMER",
+                details: {
+                  invalidFieldKeys: ["cardholderName"],
+                  invalidFields: {
+                    cardholderName: cardholderName[0]
+                  }
+                }
+              };
+              braintreeError(error);
+              return
+            }
+
             $nonce.val(payload.nonce);
+            $ccType.val(payload.details.cardType);
+            $lastDigits.val(payload.details.lastFour);
 
             if (!client.useThreeDSecure) {
               $paymentForm.submit();
               return;
             }
 
-            threeDSecureOptions.nonce = payload.nonce;
-            threeDSecureOptions.bin = payload.details.bin;
-            threeDSecureOptions.onLookupComplete = function(data, next) {
-              next();
-            }
-            client._threeDSecureInstance.verifyCard(threeDSecureOptions, function(error, response) {
-              if (error === null && (!response.liabilityShiftPossible || response.liabilityShifted)) {
-                $nonce.val(response.nonce);
-                $paymentForm.submit();
-              } else {
-                $nonce.val('');
-                braintreeError(error || { code: 'THREEDS_AUTHENTICATION_FAILED' });
-              }
+            client._createDataCollector().then(function (dataCollector) {
+              $deviceData.val(dataCollector.deviceData);
+
+              var checkout3DConfig = Object.assign(JSON.parse(JSON.stringify(threeDSecureOptions)), {
+                nonce: payload.nonce,
+                bin: payload.details.bin,
+                onLookupComplete: function (data, next) {
+                  next();
+                }
+              });
+
+              client._threeDSecureInstance.verifyCard(checkout3DConfig, function (error, response) {
+                if (error === null && (!response.liabilityShiftPossible || response.liabilityShifted)) {
+                  $nonce.val(response.nonce);
+                  $3dsAuthId.val(response.threeDSecureInfo.threeDSecureAuthenticationId);
+                  $paymentForm.submit();
+                } else {
+                  $nonce.val('');
+                  braintreeError(error || { code: 'THREEDS_AUTHENTICATION_FAILED' });
+                }
+              });
             });
           });
         }
       }
     });
+
+    braintreeForm.on('focus', function (event) {
+      var field = event.fields[event.emittedBy];
+      $(field.container).removeClass('invalid')
+    });
+
+    braintreeForm.on('empty', function (event) {
+      var field = event.fields[event.emittedBy];
+      if (!field.isFocused) {
+        $(field.container).removeClass('invalid');
+      }
+    });
+  }
+
+  function handleBraintreeErrors(errors) {
+    var fields = Object.values((errors.details && errors.details.invalidFields) || {});
+    if (fields.length === 0) {
+      fields = $hostedFields.find('.input').toArray();
+      fields.push($paymentForm.find('#cardholderNameContainer'));
+    }
+    fields.map(function (field) {
+      $(field).addClass("invalid");
+    })
   }
 
   var $paymentForm = $("#checkout_form_payment");
@@ -90,13 +152,13 @@ $(function() {
   if ($hostedFields.length > 0) {
     disableSubmit();
 
-    var fieldPromises = $hostedFields.map(function(index, field) {
+    var fieldPromises = $hostedFields.map(function (index, field) {
       var $this = $(this);
       var id = $this.data("id");
 
       var braintreeForm = new SolidusPaypalBraintree.createHostedForm(id);
 
-      var formInitializationSuccess = function(formObject) {
+      var formInitializationSuccess = function (formObject) {
         addFormHook(formObject, field);
       }
 
