@@ -59,30 +59,30 @@ $(function () {
 
           braintreeForm.tokenize(function (error, payload) {
             if (error) {
-              if (cardholderValue.length == 0 && typeof error.details !== 'undefined') {
-                error.details.invalidFieldKeys.push("cardholderName");
-                error.details.invalidFields["cardholderName"] = cardholderName[0];
-              }
+              // if (cardholderValue.length == 0 && typeof error.details !== 'undefined') {
+              //   error.details.invalidFieldKeys.push("cardholderName");
+              //   error.details.invalidFields["cardholderName"] = cardholderName[0];
+              // }
               braintreeError(error);
               return;
             }
 
-            if (cardholderValue.length == 0) {
-              error = {
-                name: "BraintreeError",
-                code: "HOSTED_FIELDS_FIELDS_INVALID",
-                message: BraintreeError.HOSTED_FIELDS_FIELDS_INVALID,
-                type: "CUSTOMER",
-                details: {
-                  invalidFieldKeys: ["cardholderName"],
-                  invalidFields: {
-                    cardholderName: cardholderName[0]
-                  }
-                }
-              };
-              braintreeError(error);
-              return
-            }
+            // if (cardholderValue.length == 0) {
+            //   error = {
+            //     name: "BraintreeError",
+            //     code: "HOSTED_FIELDS_FIELDS_INVALID",
+            //     message: BraintreeError.HOSTED_FIELDS_FIELDS_INVALID,
+            //     type: "CUSTOMER",
+            //     details: {
+            //       invalidFieldKeys: ["cardholderName"],
+            //       invalidFields: {
+            //         cardholderName: cardholderName[0]
+            //       }
+            //     }
+            //   };
+            //   braintreeError(error);
+            //   return
+            // }
 
             $nonce.val(payload.nonce);
             $ccType.val(payload.details.cardType);
