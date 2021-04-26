@@ -10,7 +10,7 @@ module SolidusPaypalBraintree
         onLookupComplete: nil, # populated after tokenization
         amount: order.total,
         email: order.email,
-        billingAddress: billingAddress: braintree_billing_address(order),
+        billingAddress: braintree_billing_address(order),
         additionalInformation: {
           shippingGivenName: ship_address.firstname,
           shippingSurname: ship_address.lastname,
