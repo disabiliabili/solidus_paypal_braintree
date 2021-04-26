@@ -3,12 +3,12 @@
 //= require solidus_paypal_braintree/promise
 //= require solidus_paypal_braintree/hosted_form
 
-$(function() {
+$(function () {
   var $paymentForm = $("#new_payment"),
-      $hostedFields = $("[data-braintree-hosted-fields]"),
-      hostedFieldsInstance = null;
+    $hostedFields = $("[data-braintree-hosted-fields]"),
+    hostedFieldsInstance = null;
 
-  function onError (err) {
+  function onError(err) {
     var msg = err.name + ": " + err.message;
     show_flash("error", msg);
   }
@@ -31,12 +31,12 @@ $(function() {
       $paymentForm.submit();
     }
 
-    return function(hostedFields) {
-      $paymentForm.on("submit", function(e) {
+    return function (hostedFields) {
+      $paymentForm.on("submit", function (e) {
         if ($hostedFields.is(":visible") && !shouldSubmit) {
           e.preventDefault();
 
-          hostedFields.tokenize(function(err, payload) {
+          hostedFields.tokenize(function (err, payload) {
             if (err) {
               errorCallback(err);
             } else {
@@ -68,17 +68,17 @@ $(function() {
   if (!$paymentForm.length || !$hostedFields.length) { return; }
 
   $.when(
-    $.getScript("https://js.braintreegateway.com/web/3.34.0/js/client.min.js"),
-    $.getScript("https://js.braintreegateway.com/web/3.34.0/js/hosted-fields.min.js")
-  ).done(function() {
-    $hostedFields.each(function() {
+    $.getScript("https://js.braintreegateway.com/web/3.76.2/js/client.min.js"),
+    $.getScript("https://js.braintreegateway.com/web/3.76.2/js/hosted-fields.min.js")
+  ).done(function () {
+    $hostedFields.each(function () {
       var $this = $(this),
-          $radios = $("[name=card]", $this),
-          id = $this.data("payment-method-id");
+        $radios = $("[name=card]", $this),
+        id = $this.data("payment-method-id");
 
       // If we have previous cards, init fields on change of radio button
       if ($radios.length) {
-        $radios.on("change", function() {
+        $radios.on("change", function () {
           if ($(this).val() == 'new') {
             showForm(id);
             initFields($this, id);
